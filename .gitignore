@@ -1,0 +1,30 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment/secrets
+.env
+
+# Data
+data/raw/*
+data/interim/*
+data/processed/*
+
+# Keep directory structure
+!data/raw/**/.gitkeep
+!data/interim/**/.gitkeep
+!data/processed/**/.gitkeep
+
+# Models
+models/*.pkl
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Database
+*.db

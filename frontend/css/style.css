@@ -1,0 +1,32 @@
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+header {
+  padding: 10px 16px;
+  background: #1a1a2e;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  font-size: 16px;
+  margin: 0;
+}
+
+#map {
+  height: calc(100% - 48px);
+  width: 100%;
+}
+
+.legend {
+  background: white;
+  padding: 8px 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  font-size: 12px;
+}

@@ -1,0 +1,24 @@
+# Data / geospatial
+pandas
+geopandas
+shapely
+rasterio
+requests
+
+# Modeling
+scikit-learn
+xgboost
+shap
+
+# Backend
+fastapi
+uvicorn[standard]
+sqlalchemy
+geoalchemy2
+psycopg2-binary
+python-dotenv
+apscheduler
+
+# Testing
+pytest
+httpx
