@@ -20,7 +20,6 @@ OUTPUT_FILE = DATA_PROCESSED / "ml_ready_fire_dataset.csv"
 # for the current prototype.
 
 DROP_COLUMNS = [
-    "brightness",
     "bright_t31",
 ]
 
