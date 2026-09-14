@@ -1,71 +1,172 @@
-"""
-Temporal feature engineering: for each hotspot location, compute
-- detection frequency over a trailing window (persistence score)
-- FRP baseline (mean/std) and how far the current detection deviates from it
-"""
 import pandas as pd
 import numpy as np
 
-from src.utils.config import DATA_INTERIM, PERSISTENCE_FREQ_THRESHOLD
-
-# Grid resolution (degrees) used to bucket nearby detections into the same
-# "location" for persistence/baseline calculations. ~0.01 deg ~ 1km.
-GRID_SIZE = 0.01
+from src.utils.config import DATA_RAW, DATA_INTERIM
 
 
-def assign_grid_cell(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df["grid_lat"] = (df["latitude"] / GRID_SIZE).round().astype(int)
-    df["grid_lon"] = (df["longitude"] / GRID_SIZE).round().astype(int)
-    df["grid_id"] = df["grid_lat"].astype(str) + "_" + df["grid_lon"].astype(str)
-    return df
+HISTORY_FILE = DATA_RAW / "firms" / "firms_history_10days.csv"
+CURRENT_FILE = DATA_INTERIM / "hotspots_features.csv"
+OUTPUT_FILE = DATA_INTERIM / "hotspots_with_temporal_features.csv"
 
 
-def compute_persistence(df: pd.DataFrame, date_col: str = "acq_date",
-                         window_days: int = 90) -> pd.DataFrame:
+# Approximately 1 km grid.
+# Latitude: 1 degree ≈ 111 km.
+# Longitude is adjusted using latitude.
+GRID_SIZE_DEGREES = 0.01
+
+
+def create_grid_id(latitude, longitude):
     """
-    For each grid cell, compute the fraction of days within the trailing
-    window that had at least one detection — this is the persistence score
-    used to separate flares/kilns (high, steady) from one-off events (low).
-    """
-    df = assign_grid_cell(df)
-    df[date_col] = pd.to_datetime(df[date_col])
+    Assign a FIRMS detection to an approximately 1 km spatial grid.
 
-    counts = df.groupby("grid_id")[date_col].nunique().rename("days_detected")
-    df = df.merge(counts, on="grid_id", how="left")
-    df["persistence_score"] = (df["days_detected"] / window_days).clip(upper=1.0)
-    df["is_persistent"] = df["persistence_score"] >= PERSISTENCE_FREQ_THRESHOLD
-    return df
+    Using a grid allows us to identify repeated fire activity
+    even when satellite detections do not have exactly the
+    same latitude/longitude.
+    """
+
+    lat_grid = np.floor(latitude / GRID_SIZE_DEGREES)
+    lon_grid = np.floor(longitude / GRID_SIZE_DEGREES)
+
+    return f"{int(lat_grid)}_{int(lon_grid)}"
 
 
-def compute_frp_baseline(df: pd.DataFrame, frp_col: str = "frp") -> pd.DataFrame:
-    """
-    For each grid cell, compute the historical mean/std of FRP and the
-    z-score / ratio of each detection relative to its own location's baseline.
-    A high ratio at a known industrial site is the strongest single signal
-    for "possible accident" rather than normal operation.
-    """
-    df = assign_grid_cell(df) if "grid_id" not in df.columns else df
-    stats = df.groupby("grid_id")[frp_col].agg(["mean", "std"]).rename(
-        columns={"mean": "frp_baseline_mean", "std": "frp_baseline_std"}
+def build_temporal_features():
+    print("Loading FIRMS history...")
+
+    history = pd.read_csv(HISTORY_FILE)
+
+    print(f"Historical records: {len(history)}")
+
+    # Convert date to datetime
+    history["acq_date"] = pd.to_datetime(
+        history["acq_date"]
     )
-    df = df.merge(stats, on="grid_id", how="left")
-    df["frp_baseline_std"] = df["frp_baseline_std"].fillna(0)
-    df["frp_ratio_to_baseline"] = df[frp_col] / df["frp_baseline_mean"].replace(0, np.nan)
-    df["frp_ratio_to_baseline"] = df["frp_ratio_to_baseline"].fillna(1.0)
-    return df
 
+    # Create spatial grid
+    history["grid_id"] = history.apply(
+        lambda row: create_grid_id(
+            row["latitude"],
+            row["longitude"]
+        ),
+        axis=1,
+    )
 
-def run(input_path: str) -> pd.DataFrame:
-    df = pd.read_csv(input_path) if input_path.endswith(".csv") else pd.read_json(input_path)
-    df = compute_persistence(df)
-    df = compute_frp_baseline(df)
-    return df
+    # --------------------------------------------------
+    # Aggregate temporal activity by grid cell
+    # --------------------------------------------------
+
+    temporal = (
+        history
+        .groupby("grid_id")
+        .agg(
+            persistence_count=(
+                "grid_id",
+                "size"
+            ),
+
+            active_days=(
+                "acq_date",
+                "nunique"
+            ),
+
+            mean_frp=(
+                "frp",
+                "mean"
+            ),
+
+            max_frp=(
+                "frp",
+                "max"
+            ),
+
+            mean_brightness=(
+                "brightness",
+                "mean"
+            ),
+
+            max_brightness=(
+                "brightness",
+                "max"
+            ),
+        )
+        .reset_index()
+    )
+
+    print()
+    print(f"Unique active grid cells: {len(temporal)}")
+
+    # --------------------------------------------------
+    # Load current 43-hotspot dataset
+    # --------------------------------------------------
+
+    current = pd.read_csv(CURRENT_FILE)
+
+    print(f"Current hotspots: {len(current)}")
+
+    # Create the same grid ID
+    current["grid_id"] = current.apply(
+        lambda row: create_grid_id(
+            row["latitude"],
+            row["longitude"]
+        ),
+        axis=1,
+    )
+
+    # --------------------------------------------------
+    # Merge temporal information
+    # --------------------------------------------------
+
+    result = current.merge(
+        temporal,
+        on="grid_id",
+        how="left",
+    )
+
+    # --------------------------------------------------
+    # Handle hotspots with no matching history
+    # --------------------------------------------------
+
+    temporal_columns = [
+        "persistence_count",
+        "active_days",
+        "mean_frp",
+        "max_frp",
+        "mean_brightness",
+        "max_brightness",
+    ]
+
+    for column in temporal_columns:
+        result[column] = result[column].fillna(0)
+
+    # --------------------------------------------------
+    # Save
+    # --------------------------------------------------
+
+    result.to_csv(
+        OUTPUT_FILE,
+        index=False,
+    )
+
+    print()
+    print("Temporal feature summary:")
+    print(
+        result[
+            [
+                "persistence_count",
+                "active_days",
+                "mean_frp",
+                "max_frp",
+            ]
+        ].describe()
+    )
+
+    print()
+    print(f"Final rows: {len(result)}")
+    print(f"Final columns: {len(result.columns)}")
+
+    print()
+    print(f"Saved to: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
-    input_path = DATA_INTERIM / "hotspots_with_spatial_features.geojson"
-    df = run(str(input_path))
-    out_path = DATA_INTERIM / "hotspots_with_temporal_features.csv"
-    df.to_csv(out_path, index=False)
-    print(f"Saved {len(df)} hotspots with temporal features to {out_path}")
+    build_temporal_features()
