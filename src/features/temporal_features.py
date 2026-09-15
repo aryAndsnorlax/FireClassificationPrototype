@@ -13,8 +13,8 @@ import pandas as pd
 
 from src.utils.config import DATA_RAW, DATA_INTERIM
 
-HISTORY_FILE = DATA_RAW / "firms" / "firms_history_10days.csv"
-CURRENT_FILE = DATA_INTERIM / "hotspots_features.csv"
+HISTORY_FILE = DATA_RAW / "firms" / "firms_history.csv"
+CURRENT_FILE = DATA_INTERIM / "hotspots_with_spatial_features.csv"
 OUTPUT_FILE = DATA_INTERIM / "hotspots_with_temporal_features.csv"
 
 GRID_SIZE_DEGREES = 0.01  # approximately 1 km at Indian latitudes
