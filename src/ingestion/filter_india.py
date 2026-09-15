@@ -8,8 +8,10 @@ from shapely.geometry import Point
 
 from src.utils.config import DATA_RAW, DATA_INTERIM
 
-
+# Input: historical FIRMS data covering the India-region bounding box
 FIRMS_FILE = DATA_RAW / "firms" / "firms_history.csv"
+
+# Actual India boundary
 INDIA_BOUNDARY_FILE = DATA_RAW / "boundaries" / "india_boundary.geojson"
 OUTPUT_FILE = DATA_INTERIM / "firms_india.csv"
 
