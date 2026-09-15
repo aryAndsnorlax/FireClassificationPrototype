@@ -9,7 +9,7 @@ from shapely.geometry import Point
 from src.utils.config import DATA_RAW, DATA_INTERIM
 
 
-FIRMS_FILE = DATA_RAW / "firms" / "firms_latest.csv"
+FIRMS_FILE = DATA_RAW / "firms" / "firms_history.csv"
 INDIA_BOUNDARY_FILE = DATA_RAW / "boundaries" / "india_boundary.geojson"
 OUTPUT_FILE = DATA_INTERIM / "firms_india.csv"
 

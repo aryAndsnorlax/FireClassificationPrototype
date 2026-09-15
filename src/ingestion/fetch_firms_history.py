@@ -27,7 +27,7 @@ SENSORS = [
 # Historical period
 # --------------------------------------------------
 
-START_DATE = "2026-09-01"
+START_DATE = "2026-08-16"
 END_DATE = "2026-09-14"
 
 WINDOW_DAYS = 5
