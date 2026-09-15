@@ -21,8 +21,8 @@ FACILITY_TYPES = [
     "works",
     "factory",
     "mine",
-    "refinery",
     "brickyard",
+    "brickworks",
 ]
 
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     result = run(
         firms_csv=str(
-            DATA_INTERIM / "firms_india.csv"
+            DATA_INTERIM / "hotspots_with_landcover.csv"
         ),
         osm_geojson=str(
             DATA_RAW
@@ -123,12 +123,12 @@ if __name__ == "__main__":
 
     out_path = (
         DATA_INTERIM
-        / "hotspots_with_spatial_features.geojson"
+        / "hotspots_with_spatial_features.csv"
     )
 
-    result.to_file(
+    result.drop(columns="geometry").to_csv(
         out_path,
-        driver="GeoJSON",
+        index=False,
     )
 
     print()
