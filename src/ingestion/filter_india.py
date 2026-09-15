@@ -9,14 +9,21 @@ from shapely.geometry import Point
 from src.utils.config import DATA_RAW, DATA_INTERIM
 
 
-FIRMS_FILE = DATA_RAW / "firms" / "firms_latest.csv"
+# Input: historical FIRMS data covering the India-region bounding box
+FIRMS_FILE = DATA_RAW / "firms" / "firms_history.csv"
+
+# Actual India boundary
 INDIA_BOUNDARY_FILE = DATA_RAW / "boundaries" / "india_boundary.geojson"
-OUTPUT_FILE = DATA_INTERIM / "firms_india.csv"
+
+# Output: only FIRMS hotspots that fall inside India
+OUTPUT_FILE = DATA_INTERIM / "firms_history_india.csv"
 
 
 def filter_firms_to_india():
-    # Load FIRMS hotspot data
+    # Load historical FIRMS hotspot data
     df = pd.read_csv(FIRMS_FILE)
+
+    print(f"Loaded FIRMS hotspots: {len(df)}")
 
     # Create geographic points from longitude/latitude
     geometry = [
@@ -30,10 +37,10 @@ def filter_firms_to_india():
         crs="EPSG:4326",
     )
 
-    # Load India boundary
+    # Load India's actual boundary
     india = gpd.read_file(INDIA_BOUNDARY_FILE).to_crs("EPSG:4326")
 
-    # Keep only hotspots inside India
+    # Keep only hotspots that fall inside India's boundary
     firms_india = gpd.sjoin(
         firms,
         india[["geometry"]],
@@ -47,13 +54,16 @@ def filter_firms_to_india():
         errors="ignore",
     )
 
-    # Save filtered dataset
+    # Save India-only historical FIRMS data
     firms_india.to_csv(OUTPUT_FILE, index=False)
 
-    print(f"Original FIRMS hotspots: {len(df)}")
-    print(f"India-only hotspots: {len(firms_india)}")
-    print(f"Removed outside India: {len(df) - len(firms_india)}")
-    print(f"Saved to: {OUTPUT_FILE}")
+    print()
+    print("========== INDIA FILTER RESULT ==========")
+    print(f"Original FIRMS hotspots : {len(df)}")
+    print(f"India-only hotspots     : {len(firms_india)}")
+    print(f"Removed outside India   : {len(df) - len(firms_india)}")
+    print(f"Saved to                : {OUTPUT_FILE}")
+    print("==========================================")
 
 
 if __name__ == "__main__":
