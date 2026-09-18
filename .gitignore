@@ -28,3 +28,14 @@ models/*.pkl
 
 # Database
 *.db
+
+# Environmental generated data
+data/interim/environmental_cache/
+data/interim/environmental_grid_cache/
+data/interim/environmental_context_test.csv
+
+data/processed/environmental_context.csv
+data/processed/environmental_assessment.csv
+
+ML_artifacts.zip
+ src/environmental/
